@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Llama3.2</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='lib/default.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='lib/katex.min.css') }}">
+
+        <style>
+            @font-face {
+                font-family: 'JetBrains Mono';
+                src: url("{{ url_for('static', filename='lib/fonts/CodeFont.ttf') }}");
+                font-family: code;
+            }
+
+            *{
+                margin: 0;
+                padding: 0;
+                font-family: 'Inter', sans-serif;
+            }
+
+            body{
+                background-color: aliceblue;
+                display: flex;
+                height: 100vh;
+                overflow-y: hidden;
+            }
+            .previous-chats{
+                background-color: white;
+                height: 100vh;
+                max-height: 100%;
+                max-width: 25%;
+                width: 25%;
+            }
+
+            .main-chat{
+                display: flex;
+                flex-direction: column;
+                width: 75%;
+                height: 100vh;
+            }
+            
+            .ai-chat{
+                padding: 20px 20px 20px 20px;
+                max-height: 85%;
+                height: 85%;
+                overflow-y: auto;
+            }
+            .ai-chat::-webkit-scrollbar {
+                display: none;
+            }
+            .ai-chat{
+                -ms-overflow-style: none;
+                scrollbar-width: none;   
+            }
+
+            .prompt{
+                width: 65%;
+                max-width: 65%;
+                background-color: white;
+                height: 10%;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: auto;
+                margin-bottom: 2.5%;
+                display: flex;
+                border-radius: 30px;
+            }
+            .prompt textarea{
+                display: block;
+                margin-top: auto;
+                margin-bottom: auto;
+                height: 80%;
+                background-color: transparent;
+                border: transparent;
+                border-radius: 30px;
+                font-size: 20px;
+                padding:10px 20px 10px 20px;
+                width: 85%;
+                resize: none;
+            }
+            .prompt textarea::-webkit-scrollbar {
+                display: none;
+            }
+            .prompt textarea{
+                -ms-overflow-style: none;
+                scrollbar-width: none;   
+            }
+            .prompt textarea:focus {
+                outline: none;
+                box-shadow: none;
+            }
+            .prompt button{
+                background-color: rgb(214, 214, 214);
+                width: 15%;
+                height: 100%;
+                border-top-right-radius: 30px;
+                border-bottom-right-radius: 30px;
+                transition: ease-in 0.1s;
+                border: none;
+            }
+            .prompt button img{
+                width: 30px;
+                height: 30px;
+                transition: ease 0.1s;
+                filter: invert(1);
+            }
+            .prompt button:hover{
+                background-color: black;
+            }
+
+            .user-text{
+                width: 45%;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                margin-left: auto;
+                margin-right: 20%;
+                display: block;
+                background-color:bisque;
+                padding: 15px 15px 15px 15px;
+                border-radius: 20px;
+                font-size: 18px;
+            }
+            .ai-text{
+                width: 45%;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                margin-right: auto;
+                margin-left: 20%;
+                display: block;
+                padding: 15px 15px 15px 15px;
+                font-size: 18px;
+            }
+
+            pre, code {
+                font-family: code;
+                font-size: 18px;
+                /* optional for ligatures */
+                font-variant-ligatures: contextual;
+                -webkit-font-feature-settings: "liga" 1;
+                font-feature-settings: "liga" 1;
+            }
+            ul, ol {
+                padding-left: 1.5em;
+                margin-left: 0;
+                list-style-position: inside;
+            }
+            #add, #remove{
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: 5%;
+
+                background-color: rgb(214, 214, 214);
+                padding: 10px 10px 10px 10px;
+                text-align: center;
+                max-width: 40%;
+                color: black;
+                transition: ease-in 0.1s;
+                border-radius: 30px;
+            }
+            #add:hover, #remove:hover{
+                background-color: black;
+                color: white;
+            }
+            .llama-chats{
+                max-width: 80%;
+                background-color: white;
+                border-radius: 30px;
+                text-align: center;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: 5%;
+                transition: ease-in 0.1s;
+                padding: 15px 15px 15px 15px;
+            }
+            .llama-chats:hover{
+                box-shadow: 0px 0px 20px 0px rgba(0, 0, 0, 0.2);
+            }
+            .chats{
+                overflow-y: auto;
+                padding-bottom: 5%;
+                max-height: 70%;
+            }
+
+
+        </style>
+    </head>
+    <body>
+        
+        <section class="previous-chats">
+            <div id="add">
+                + New Chat
+            </div>
+            <div id="remove">
+                - Remove Chat
+            </div>
+            <br><br><br>
+
+            <div class="chats">
+
+            </div>
+
+        </section>
+
+        <section class="main-chat">
+            <div class="ai-chat">
+            </div>
+
+            <div class="prompt">
+                <textarea id="prompt" placeholder="Ask anything"></textarea>
+                <button id="submit">
+                    <img src="{{ url_for('static', filename='images/arrow_up.png') }}"/>
+                </button>
+            </div>
+        </section>
+
+        <script src="{{ url_for('static', filename='lib/katex.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='lib/auto-render.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='lib/highlight.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='lib/marked.min.js') }}"></script>
+
+        <script>
+            const textarea = document.getElementById("prompt");
+            const button = document.getElementById("submit");
+            const ai_chat = document.getElementsByClassName("ai-chat")[0];
+            const llama_chats = document.getElementsByClassName("chats")[0];
+
+            let llama_chat_history;
+            let current_chat_id;
+            let prompt_text;
+
+            function scroll_chat(user){
+                const current_ai_chats = document.getElementsByClassName("ai-text");
+                const current_user_chats = document.getElementsByClassName("user-text");
+
+                const last_chat = current_ai_chats[current_ai_chats.length-1];
+                const last_user = current_user_chats[current_user_chats.length-1];
+
+                if (!user){
+                    ai_chat.scrollTo({
+                        top: ai_chat.scrollHeight-last_chat.scrollHeight-20,
+                        behavior: 'smooth'
+                    });
+                }
+                else{
+                    ai_chat.scrollTo({
+                        top: ai_chat.scrollHeight-last_user.scrollHeight-20,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+
+            function create_new_user_text(text, classname){
+                const new_text = document.createElement("div");
+                new_text.className = classname;
+
+                const raw = marked.parse(text);
+                new_text.innerHTML = raw;
+
+                renderMathInElement(new_text, {
+                    delimiters: [
+                        { left: "$$", right: "$$", display: true },
+                        { left: "$", right: "$", display: false },
+                        { left: "\\(", right: "\\)", display: false },
+                        { left: "\\[", right: "\\]", display: true }
+                    ],
+                    throwOnError: false
+                });
+
+                new_text.querySelectorAll("pre code").forEach(block => {
+                    hljs.highlightElement(block);
+                });
+
+                return new_text;
+            }
+            
+            async function sendPrompt(prompt) {
+                const res = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: prompt, id: current_chat_id-1})
+                });
+
+                const data = await res.json();
+                
+                return data
+            }
+
+            async function load_chat_history(load_previous_chat){
+                const res = await fetch("/history", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                });
+
+                const data = await res.json();
+                llama_chat_history = data;
+            
+                if (!load_previous_chat){
+                    return;
+                }
+
+                for (let i=0; i<data.length; i++){
+                    var chat = data[i];
+                    var new_chat = document.createElement("div");
+
+                    new_chat.textContent = `${i+1}. ${chat.name}`;
+                    new_chat.className = "llama-chats"
+                    new_chat.id = `chat-${i+1}`;
+
+                    new_chat.onclick = async ()=>{
+                        await load_chat_history(false);
+                        current_chat_id = i+1;
+                        ai_chat.innerHTML = ""
+                        llama_chat_history[i].history.forEach(convo => {
+                            if (convo.role == "assistant"){
+                                ai_chat.appendChild(create_new_user_text(convo.content, 'ai-text'));
+                            }
+                            else if (convo.role == "user"){
+                                ai_chat.appendChild(create_new_user_text(convo.content, 'user-text'));
+                            }
+                        });
+
+                        scroll_chat(false)
+                    }
+
+                    llama_chats.appendChild(new_chat)
+                }
+            }
+
+            async function edit_chat(name, type){
+                const res = await fetch("/edit_chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: name, type: type})
+                });
+
+                llama_chats.innerHTML = "";
+
+                await load_chat_history(true);
+                
+            }
+
+            load_chat_history(true);
+
+            button.onclick = async () => {
+                ai_chat.appendChild(create_new_user_text(textarea.value, 'user-text'));
+                prompt_text = textarea.value;
+                textarea.value = "";
+
+                setTimeout(()=>{
+                    scroll_chat(true);
+                }, 200);
+
+                const data = await sendPrompt(prompt_text);
+                ai_chat.appendChild(create_new_user_text(data.reply, 'ai-text'));
+                scroll_chat(false)
+            };
+            document.addEventListener('keydown', async function(event){
+                if (!event.shiftKey && (event.key === 'Enter' || event.keyCode === 13)) {
+                    ai_chat.appendChild(create_new_user_text(textarea.value, 'user-text'));
+                    prompt_text = textarea.value;
+                    textarea.value = "";
+
+                    setTimeout(()=>{
+                        scroll_chat(true);
+                    }, 200);
+
+                    const data = await sendPrompt(prompt_text);
+                    ai_chat.appendChild(create_new_user_text(data.reply, 'ai-text'));
+                    scroll_chat(false)
+                }
+            })
+
+            document.getElementById("add").onclick = async ()=>{
+                var name = prompt("enter name for chat");
+                
+                if (name !== null){
+                    await edit_chat(name, "add");
+
+                    document.getElementById(`chat-${llama_chat_history.length}`).click();
+                }
+            }
+            document.getElementById("remove").onclick = async ()=>{
+                var id = prompt("enter id for chat for chat you want to delete, eg (1, 2, 3...)");
+
+                if (id !== null){
+                    await edit_chat(llama_chat_history[id-1].name, "remove");
+
+                    if (current_chat_id == id){
+                        document.getElementById(`chat-${llama_chat_history.length}`).click();
+                    }
+                }
+            }
+
+            // textarea.addEventListener("input", () => {
+            //     textarea.style.height = "auto";
+            //     textarea.style.height = Math.min(textarea.scrollHeight, 150) + "px";
+            // });
+        </script>
+            
+
+    </body>
+</html>
